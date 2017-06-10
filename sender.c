@@ -24,7 +24,16 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <sys/shm.h>
+#include <string.h>
+#include <errno.h>
 #include "sharedlib.h"
+
+
+/*! programName   global pointer to hold the program name */
+static const char *programName = NULL;
+
 
 /**\brief
  * Sender:
@@ -51,8 +60,50 @@
 
 int main(int argc, char *argv[]) {
 
-    printf("!\n");
 
-    SIZE_MAX;
-    return 0;
+    shmseg shm;
+    size_t size;
+    programName = argv[0];
+
+
+    if( EXIT_FAILURE == (args_parser(argc,argv,&size)) ){
+        return EXIT_FAILURE;
+    }
+    /* initialise shared memory for read/write by giving a "0" */
+    if( shmseg_easy_init(&size,0,&shm) == -1){
+        shmseg_easy_clean(&shm);
+        return EXIT_FAILURE;
+    }
+
+    int c;
+
+    do{
+        if (ferror(stdin)) {
+            fprintf(stderr, "%s -> fgetc: %s \n", programName, strerror(errno));
+            shmseg_easy_clean(&shm);
+            return EXIT_FAILURE;
+        }
+
+        c = fgetc(stdin);
+
+        if (c == EOF) {
+            fprintf(stderr, " fgetc : %s %s \n", programName, strerror(errno));
+            shmseg_easy_clean(&shm);
+            return -1;
+        }
+
+        shm.s_write(&c);
+
+    }while (c != EOF);
+
+    if (fflush(stdout) == EOF) {
+        fprintf(stderr, " fflush : %s %s \n", programName, strerror(errno));
+        shmseg_easy_clean(&shm);
+        return -1;
+    }
+
+
+    return shmseg_easy_clean(&shm);
+
+
 }

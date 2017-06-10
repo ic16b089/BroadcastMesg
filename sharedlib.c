@@ -282,8 +282,37 @@ int shmseg_easy_init(const size_t *shmsize, const int mode, shmseg *shmsg) {
  * @result      An int ( 0 on success and -1 on failure).
  */
 static int shmseg_easy_write(int *c) {
-    
-  
+
+    int data = 0, l;
+    static size_t indx = 0;
+
+
+
+    do{
+        errno =0;
+        l = P(shmsgpr->semid[0]);       /* semaphore counter dekrement, means  "-" */
+
+    }while (l == -1 && errno == EINTR);
+
+
+    if (l == -1) {
+        fprintf(stderr, " P() : %s %s \n", programmName, strerror(errno));
+        shmseg_easy_clean(shmsgpr);
+        return -1;
+    }
+
+    data = *c;
+    shmbff[(indx++) % shmssize_g] = data;
+
+
+    if (V(shmsgpr->semid[1]) == -1) {   /* semaphore counter inkrement, means  "+" */
+        fprintf(stderr, " V() : %s %s \n", programmName, strerror(errno));
+        shmseg_easy_clean(shmsgpr);
+        return -1;
+    }
+
+    return 0;
+
     
 }
 
